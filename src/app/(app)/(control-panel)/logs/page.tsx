@@ -10,13 +10,8 @@ import {
   Activity,
   ChevronRight,
   Clock,
-  CheckCircle2,
-  AlertCircle,
-  Ban,
-  BarChart3
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'

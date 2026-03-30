@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { LuLayoutDashboard } from "react-icons/lu";
 import { ProjectSyncRedirect, useProject } from '@/context/project-context'
-
+import { TbBrandGoogleAnalytics } from "react-icons/tb";
+import { LuFolderCog } from "react-icons/lu";
+import { LuFolderPlus } from "react-icons/lu";
 interface SidebarProps {
     isCollapsed: boolean;
     toggleSidebar: () => void;
@@ -37,12 +39,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
 
     const navItems = [
         { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard },
-        { name: 'New Project', href: '/new-project', icon: HiOutlineFolder },
+        { name: 'New Project', href: '/new-project', icon: LuFolderPlus },
         { name: 'APIs', href: '/apis', icon: HiOutlineCollection },
         { name: 'New API', href: '/new-api', icon: HiOutlinePlusCircle },
-        { name: 'Manage Project', href: '/manage-project', icon: HiOutlineFolder },
+        { name: 'Manage Project', href: '/manage-project', icon: LuFolderCog },
         { name: 'Logs', href: '/logs', icon: HiOutlineDocumentText },
-        { name: 'Statistics', href: '/stats', icon: HiOutlineChartBar },
+        { name: 'Statistics', href: '/stats', icon: TbBrandGoogleAnalytics },
         { name: 'Settings', href: '/settings', icon: HiOutlineCog },
     ]
 

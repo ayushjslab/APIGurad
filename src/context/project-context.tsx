@@ -14,6 +14,7 @@ interface ProjectContextType {
     setActiveProject: (project: Project | null) => void;
     projects: Project[];
     isLoading: boolean;
+    session: any;
 }
 
 import { usePathname, useRouter } from 'next/navigation'
@@ -21,7 +22,7 @@ import { usePathname, useRouter } from 'next/navigation'
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 
 export const ProjectProvider = ({ children }: { children: React.ReactNode }) => {
-    const { data: session } = authClient.useSession()
+    const { data: session, isPending: isSessionLoading } = authClient.useSession()
     const [activeProject, setActiveProject] = useState<Project | null>(null)
 
     const { data: projects = [], isLoading } = useQuery<Project[]>({
@@ -49,22 +50,28 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
     }, [projects, activeProject])
 
     return (
-        <ProjectContext.Provider value={{ activeProject, setActiveProject, projects, isLoading }}>
+        <ProjectContext.Provider value={{
+            activeProject,
+            setActiveProject,
+            projects,
+            isLoading: isLoading || isSessionLoading,
+            session: session || null
+        }}>
             {children}
         </ProjectContext.Provider>
     )
 }
 
 export const ProjectSyncRedirect = ({ children }: { children: React.ReactNode }) => {
-    const { projects, isLoading } = useProject()
+    const { projects, isLoading, session } = useProject()
     const pathname = usePathname()
     const router = useRouter()
 
     useEffect(() => {
-        if (!isLoading && projects.length === 0 && !pathname.includes('/new-project')) {
+        if (!isLoading && session && projects.length === 0 && !pathname.includes('/new-project')) {
             router.push('/new-project')
         }
-    }, [projects, isLoading, pathname, router])
+    }, [projects, isLoading, session, pathname, router])
 
     return <>{children}</>
 }
