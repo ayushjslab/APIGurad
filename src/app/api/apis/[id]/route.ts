@@ -114,3 +114,37 @@ export async function DELETE(
         return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 }
+
+export async function GET(
+    _req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { id } = await params;
+
+        await connectToDatabase();
+
+        const api = await Api.findById(id);
+        if (!api) {
+            return NextResponse.json({ error: "API monitor not found" }, { status: 404 });
+        }
+
+        const project = await Project.findOne({ _id: api.projectId, userId: session.user.id });
+        if (!project) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        }
+
+        return NextResponse.json(api);
+    } catch (error: any) {
+        console.error("API fetch error:", error);
+        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    }
+}

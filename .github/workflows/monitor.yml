@@ -3,7 +3,7 @@ name: API Health Monitor
 on:
   schedule:
     # Run every 5 minutes (GitHub Actions minimum interval)
-    - cron: '*/1 * * * *'
+    - cron: '* * * * *'
   workflow_dispatch:
     # Allow manual trigger from GitHub UI for testing
 
