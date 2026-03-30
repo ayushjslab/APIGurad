@@ -21,7 +21,6 @@ const ApiLogSchema = new mongoose.Schema({
     checkedAt: {
         type: Date,
         default: Date.now,
-        index: true
     },
 
     // ─── Result ────────────────────────────────────────────────────────────────
