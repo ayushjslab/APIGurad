@@ -66,7 +66,7 @@ const Navbar = ({ isCollapsed, toggleSidebar, isMobile }: NavbarProps) => {
         <header
             className={cn(
                 "sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50 transition-all duration-300",
-                !isMobile && (isCollapsed ? "pl-20" : "pl-0")
+                !isMobile && (isCollapsed ? "md:pl-20" : "md:pl-64")
             )}
         >
             <div className="flex h-16 items-center justify-between px-4 md:px-8">

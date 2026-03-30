@@ -61,10 +61,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                     isMobile={isMobile}
                 />
                 <div className={cn(
-                    "flex-1 p-4 md:p-8 overflow-auto",
+                    "flex-1 overflow-auto transition-all duration-300",
                     !isMobile && (isCollapsed ? "md:pl-20" : "md:pl-64")
                 )}>
-                    {children}
+                    <div className="p-4 md:p-8">
+                        {children}
+                    </div>
                 </div>
             </main>
         </div>

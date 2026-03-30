@@ -116,7 +116,7 @@ const ManageProjectPage = () => {
     }
 
     return (
-        <div className="container mx-auto py-8 space-y-8 animate-in fade-in duration-500">
+        <div className="container mx-auto py-8 px-4 md:px-0 max-w-7xl space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold tracking-tight">Manage Projects</h1>

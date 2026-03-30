@@ -12,9 +12,16 @@ import {
     HiOutlineCog,
     HiOutlineHome,
     HiOutlineSearch,
+    HiOutlineFolder,
+    HiOutlineCollection,
+    HiOutlineDocumentText,
     HiOutlineBell
 } from 'react-icons/hi'
+import { LuLayoutDashboard } from "react-icons/lu";
+import { TbBrandGoogleAnalytics } from "react-icons/tb";
+import { FiFolderPlus } from "react-icons/fi";
 import { cn } from '@/lib/utils'
+import { LuFolderCog } from "react-icons/lu";
 import { Button } from '@/components/ui/button'
 
 interface SidebarProps {
@@ -27,15 +34,23 @@ interface SidebarProps {
 const Sidebar = ({ isCollapsed, toggleSidebar, isMobile, disabled }: SidebarProps) => {
     const pathname = usePathname()
 
-    const navItems = [
-        { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
-        { name: 'New Project', href: '/new-project', icon: HiOutlineChartBar },
-        { name: 'APIs', href: '/apis', icon: HiOutlineSearch },
-        { name: 'New API', href: '/new-api', icon: HiOutlinePlusCircle },
-        { name: 'Logs', href: '/logs', icon: HiOutlineClipboardList },
-        { name: 'Statistics', href: '/stats', icon: HiOutlineChartBar },
-        { name: 'Settings', href: '/settings', icon: HiOutlineCog },
-    ]
+const navItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard },
+
+    { name: 'New Project', href: '/new-project', icon: FiFolderPlus },
+
+    { name: 'APIs', href: '/apis', icon: HiOutlineCollection },
+
+    { name: 'New API', href: '/new-api', icon: HiOutlinePlusCircle },
+
+    { name: 'Manage Project', href: '/manage-project', icon: LuFolderCog },
+
+    { name: 'Logs', href: '/logs', icon: HiOutlineDocumentText },
+
+    { name: 'Statistics', href: '/stats', icon: TbBrandGoogleAnalytics },
+
+    { name: 'Settings', href: '/settings', icon: HiOutlineCog },
+]
 
     // const toggleSidebar = () => setIsCollapsed(!isCollapsed)
 
