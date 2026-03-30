@@ -1,0 +1,39 @@
+name: API Health Monitor
+
+on:
+  schedule:
+    # Run every 5 minutes (GitHub Actions minimum interval)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub UI for testing
+
+jobs:
+  run-monitor:
+    name: Check All API Monitors
+    runs-on: ubuntu-latest
+    timeout-minutes: 4  # Safety — must finish before next run
+
+    steps:
+      - name: Trigger Monitor Run
+        run: |
+          echo "🔍 Triggering monitor run at $(date -u)"
+
+          RESPONSE=$(curl --silent --show-error \
+            --max-time 200 \
+            --write-out "\n%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/monitor/run" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "📊 Response: $BODY"
+          echo "📡 HTTP Status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "❌ Monitor run failed with status $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Monitor run completed successfully"

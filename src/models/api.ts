@@ -37,15 +37,38 @@ const ApiSchema = new mongoose.Schema({
         type: Schema.Types.Mixed,
         default: null
     },
+    // ─── Health Status ─────────────────────────────────────────────────────────
     status: {
         type: String,
-        enum: ["healthy", "degraded", "down", "pending"],
+        enum: ["healthy", "degraded", "down", "pending", "disabled"],
         default: "pending"
     },
-    lastResponseTime: Number,
+    lastResponseTime: Number,   // ms
     lastChecked: Date,
+    lastStatusCode: Number,     // last HTTP status received from the endpoint
+
+    // ─── Failure Tracking ──────────────────────────────────────────────────────
+    consecutiveFails: {
+        type: Number,
+        default: 0
+    },
+    totalSuccess: {
+        type: Number,
+        default: 0
+    },
+    totalFails: {
+        type: Number,
+        default: 0
+    },
+
+    // ─── Auto-disable Metadata ─────────────────────────────────────────────────
+    disabledAt: Date,
+    disabledReason: String,     // human-readable e.g. "5 consecutive failures"
 }, {
     timestamps: true
 });
+
+// Index for the monitor runner — fetch all active monitors efficiently
+ApiSchema.index({ status: 1, projectId: 1 });
 
 export const Api = mongoose.models.Api || mongoose.model("Api", ApiSchema);

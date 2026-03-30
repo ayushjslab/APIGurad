@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -8,10 +8,7 @@ import {
     HiChevronLeft,
     HiOutlineChartBar,
     HiOutlinePlusCircle,
-    HiOutlineClipboardList,
     HiOutlineCog,
-    HiOutlineHome,
-    HiOutlineSearch,
     HiOutlineFolder,
     HiOutlineCollection,
     HiOutlineDocumentText,
@@ -19,7 +16,7 @@ import {
 } from 'react-icons/hi'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-
+import { LuLayoutDashboard } from "react-icons/lu";
 import { ProjectSyncRedirect, useProject } from '@/context/project-context'
 
 interface SidebarProps {
@@ -39,7 +36,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
     }, [])
 
     const navItems = [
-        { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
+        { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard },
         { name: 'New Project', href: '/new-project', icon: HiOutlineFolder },
         { name: 'APIs', href: '/apis', icon: HiOutlineCollection },
         { name: 'New API', href: '/new-api', icon: HiOutlinePlusCircle },

@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Edit2
+  Edit2,
+  RotateCcw,
+  Ban
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card'
@@ -44,8 +46,14 @@ interface API {
   body: any;
   expectedStatus: number;
   expectedResponseStructure: any;
-  status: 'healthy' | 'down' | 'pending';
+  status: 'healthy' | 'down' | 'pending' | 'disabled';
   lastChecked?: string;
+  consecutiveFails?: number;
+  totalSuccess?: number;
+  totalFails?: number;
+  lastStatusCode?: number;
+  disabledAt?: string;
+  disabledReason?: string;
 }
 
 const ApisPage = () => {
@@ -79,6 +87,24 @@ const ApisPage = () => {
     }
   })
 
+  const enableMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/apis/${id}/enable`, { method: 'PATCH' })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to re-enable monitor')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['apis', activeProject?._id] })
+      toast.success('Monitor re-enabled — will be checked on next run')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to re-enable')
+    }
+  })
+
   const updateMutation = useMutation({
     mutationFn: async (payload: any) => {
       const response = await fetch(`/api/apis/${editingApi?._id}`, {
@@ -106,6 +132,7 @@ const ApisPage = () => {
     switch (status) {
       case 'healthy': return 'bg-green-500/10 text-green-500 border-green-500/20'
       case 'down': return 'bg-red-500/10 text-red-500 border-red-500/20'
+      case 'disabled': return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
       default: return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
     }
   }
@@ -114,6 +141,7 @@ const ApisPage = () => {
     switch (status) {
       case 'healthy': return <CheckCircle2 className="h-3 w-3" />
       case 'down': return <AlertCircle className="h-3 w-3" />
+      case 'disabled': return <Ban className="h-3 w-3" />
       default: return <RefreshCw className="h-3 w-3 animate-spin" />
     }
   }
@@ -228,7 +256,10 @@ const ApisPage = () => {
       ) : (
         <div className="grid gap-4">
           {apis.map((api) => (
-            <Card key={api._id} className="group border-border/50 bg-card/50 hover:bg-card/80 transition-all hover:shadow-xl hover:shadow-primary/5 rounded-3xl overflow-hidden">
+            <Card key={api._id} className={`group border-border/50 transition-all hover:shadow-xl rounded-3xl overflow-hidden ${api.status === 'disabled'
+              ? 'bg-muted/20 opacity-75 hover:opacity-100'
+              : 'bg-card/50 hover:bg-card/80 hover:shadow-primary/5'
+              }`}>
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row md:items-center p-6 gap-6">
                   {/* Status Icon */}
@@ -283,16 +314,41 @@ const ApisPage = () => {
                     </div>
                   </div>
 
+                  {/* Disabled Reason Banner */}
+                  {api.status === 'disabled' && api.disabledReason && (
+                    <div className="hidden md:flex items-center gap-1.5 text-[10px] text-zinc-400 bg-zinc-500/10 border border-zinc-500/20 rounded-xl px-3 py-1.5 max-w-xs shrink-0">
+                      <Ban className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{api.disabledReason}</span>
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-xl h-10 w-10 text-primary hover:bg-primary/10"
-                      onClick={() => setEditingApi(api)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+                    {api.status === 'disabled' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl h-9 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => enableMutation.mutate(api._id)}
+                        disabled={enableMutation.isPending && enableMutation.variables === api._id}
+                      >
+                        {enableMutation.isPending && enableMutation.variables === api._id ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        )}
+                        Re-enable
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl h-10 w-10 text-primary hover:bg-primary/10"
+                        onClick={() => setEditingApi(api)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
