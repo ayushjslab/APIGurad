@@ -32,35 +32,11 @@ interface Project {
     name: string;
 }
 
+import { useProject } from '@/context/project-context'
+
 const Navbar = ({ isCollapsed, toggleSidebar, isMobile }: NavbarProps) => {
     const { data: session } = authClient.useSession()
-    const [activeProject, setActiveProject] = useState<Project | null>(null)
-
-    // Use React Query for projects to keep it in sync with ManageProjectPage
-    const { data: projects = [] } = useQuery<Project[]>({
-        queryKey: ['projects'],
-        queryFn: async () => {
-            const response = await fetch('/api/projects')
-            if (!response.ok) throw new Error('Failed to fetch projects')
-            return response.json()
-        },
-        enabled: !!session,
-    })
-
-    // Set first project as active if none selected and projects are loaded
-    useEffect(() => {
-        if (projects.length > 0 && !activeProject) {
-            setActiveProject(projects[0])
-        } else if (projects.length === 0) {
-            setActiveProject(null)
-        } else if (activeProject) {
-            // Update active project if its name changed in the background
-            const current = projects.find(p => p._id === activeProject._id)
-            if (current && current.name !== activeProject.name) {
-                setActiveProject(current)
-            }
-        }
-    }, [projects, activeProject])
+    const { activeProject, setActiveProject, projects } = useProject()
 
     return (
         <header

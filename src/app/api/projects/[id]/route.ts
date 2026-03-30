@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import { Project } from "@/models/project";
+import { Api } from "@/models/api";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -53,13 +54,15 @@ export async function DELETE(
 
         const { id } = await params;
 
+        // Perform cascade delete
+        await Api.deleteMany({ projectId: id });
         const project = await Project.findOneAndDelete({ _id: id, userId: session.user.id });
 
         if (!project) {
             return NextResponse.json({ error: "Project not found or unauthorized" }, { status: 404 });
         }
 
-        return NextResponse.json({ message: "Project deleted successfully" });
+        return NextResponse.json({ message: "Project and associated APIs deleted successfully" });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
