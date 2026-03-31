@@ -8,14 +8,13 @@ import {
   BarChart3,
   Bell,
   ArrowRight,
-  CheckCircle2,
   Globe,
   Cpu,
-  MousePointer2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import HomeNavbar from '@/components/shared/home-navbar'
 import Link from 'next/link'
+import PricingPlans from '@/components/shared/pricing-plans'
 
 const HomePage = () => {
   const fadeIn = {
@@ -73,9 +72,9 @@ const HomePage = () => {
                   Start Monitoring Free <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="#features">
+              <Link href="#pricing">
                 <Button variant="outline" size="lg" className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest border-border/50 bg-background/50 backdrop-blur-md hover:bg-muted/50">
-                  View Features
+                  View Pricing
                 </Button>
               </Link>
             </motion.div>
@@ -103,7 +102,7 @@ const HomePage = () => {
             className="relative hidden lg:block"
           >
             {/* Decorative Frames */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent rounded-[40px] -rotate-6 blur-2xl opacity-20" />
+            <div className="absolute inset-0 bg-linear-to-tr from-primary/20 to-transparent rounded-[40px] -rotate-6 blur-2xl opacity-20" />
 
             {/* Mock Dashboard Snippet */}
             <div className="relative bg-[#0a0a0a] border border-white/10 rounded-[32px] p-8 shadow-2xl overflow-hidden group">
@@ -167,12 +166,12 @@ const HomePage = () => {
           className="mt-32 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 max-w-7xl mx-auto"
         >
           {[
-            { icon: Shield, label: 'Enterprise Security', desc: 'bank-grade encryption' },
+            { icon: Shield, label: 'Enterprise Security', desc: 'bank-grade encryption', id: 'features' },
             { icon: Globe, label: 'Global Edge', desc: '12 regions worldwide' },
             { icon: Cpu, label: 'Zero Overhead', desc: 'Low-latency monitoring' },
             { icon: BarChart3, label: 'Advanced Analytics', desc: 'Deep performance metrics' },
           ].map((feature, i) => (
-            <div key={i} className="space-y-4 group">
+            <div key={i} className="space-y-4 group" id={feature.id}>
               <div className="p-4 w-fit rounded-2xl bg-muted/50 border border-border/50 group-hover:border-primary/50 group-hover:bg-primary/5 transition-all">
                 <feature.icon className="h-6 w-6 text-primary" />
               </div>
@@ -183,22 +182,12 @@ const HomePage = () => {
             </div>
           ))}
         </motion.div>
-      </main>
 
-      {/* Footer / CTA Section */}
-      <section className="mt-20 py-20 px-6 relative overflow-hidden" id="features">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Ready to secure your <span className="text-primary italic">infrastructure?</span></h2>
-          <p className="text-muted-foreground font-medium">Join thousands of developers who sleep better at night.</p>
-          <div className="flex items-center justify-center gap-6">
-            <Link href="/signin">
-              <Button size="lg" className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20">
-                Create Account
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        {/* Pricing Section */}
+        <section className="mt-40 max-w-7xl mx-auto px-6" id="pricing">
+          <PricingPlans showHeader={true} />
+        </section>
+      </main>
 
       <footer className="py-10 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em]">© 2026 APIGuard Systems. All rights reserved.</p>

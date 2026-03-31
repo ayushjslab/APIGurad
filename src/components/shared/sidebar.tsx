@@ -12,7 +12,8 @@ import {
     HiOutlineFolder,
     HiOutlineCollection,
     HiOutlineDocumentText,
-    HiOutlineBell
+    HiOutlineBell,
+    HiOutlineCash
 } from 'react-icons/hi'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
         { name: 'Logs', href: '/logs', icon: HiOutlineDocumentText },
         { name: 'Statistics', href: '/stats', icon: TbBrandGoogleAnalytics },
         { name: 'Notifications', href: '/notifications', icon: HiOutlineBell },
+        { name: 'Pricing', href: '/pricing', icon: HiOutlineCash },
     ]
 
     if (!mounted) return null
