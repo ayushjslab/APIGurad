@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import { Project } from "@/models/project";
+import { Plan } from "@/models/plan";
+import { getOrCreatePlan } from "@/lib/plan-utils";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -37,6 +39,15 @@ export async function POST(req: Request) {
 
         if (!name) {
             return NextResponse.json({ error: "Project name is required" }, { status: 400 });
+        }
+
+        const plan = await getOrCreatePlan(session.user.id);
+        const currentProjects = await Project.countDocuments({ userId: session.user.id });
+
+        if (currentProjects >= plan.projectCredits) {
+            return NextResponse.json({
+                error: `Project limit reached. Your current plan allows only ${plan.projectCredits} project(s).`
+            }, { status: 403 });
         }
 
         const project = await Project.create({

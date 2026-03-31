@@ -15,6 +15,8 @@ interface ProjectContextType {
     projects: Project[];
     isLoading: boolean;
     session: any;
+    plan: any;
+    isPlanLoading: boolean;
 }
 
 import { usePathname, useRouter } from 'next/navigation'
@@ -30,6 +32,16 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         queryFn: async () => {
             const response = await fetch('/api/projects')
             if (!response.ok) throw new Error('Failed to fetch projects')
+            return response.json()
+        },
+        enabled: !!session,
+    })
+
+    const { data: plan, isLoading: isPlanLoading } = useQuery({
+        queryKey: ['plan-usage'],
+        queryFn: async () => {
+            const response = await fetch('/api/plan/usage')
+            if (!response.ok) throw new Error('Failed to fetch plan usage')
             return response.json()
         },
         enabled: !!session,
@@ -55,7 +67,9 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
             setActiveProject,
             projects,
             isLoading: isLoading || isSessionLoading,
-            session: session || null
+            session: session || null,
+            plan: plan || null,
+            isPlanLoading
         }}>
             {children}
         </ProjectContext.Provider>

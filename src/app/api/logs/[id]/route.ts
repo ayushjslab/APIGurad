@@ -51,8 +51,41 @@ export async function GET(
 
         const total = await ApiLog.countDocuments({ apiId: id });
 
+        // 3. Optional: Fetch timeline data (last 90 checks)
+        let timeline = null;
+        if (searchParams.get("includeTimeline") === "true") {
+            const rawTimeline = await ApiLog.find({ apiId: id })
+                .sort({ checkedAt: -1 })
+                .limit(90)
+                .select("checkedAt outcome")
+                .lean();
+
+            // Map to the same format as the old uptime endpoint
+            timeline = rawTimeline.reverse().map(log => ({
+                timestamp: log.checkedAt,
+                status: log.outcome === "success" ? "success" : "error"
+            }));
+
+            // Add inactive padding if needed
+            if (timeline.length < 90) {
+                const padding = Array(90 - timeline.length).fill({
+                    timestamp: null,
+                    status: "inactive"
+                });
+                timeline = [...padding, ...timeline];
+            }
+        }
+
         return NextResponse.json({
             logs,
+            timeline,
+            meta: {
+                status: api.status,
+                totalSuccess: api.totalSuccess,
+                totalFails: api.totalFails,
+                consecutiveFails: api.consecutiveFails,
+                interval: api.interval,
+            },
             pagination: {
                 total,
                 page,

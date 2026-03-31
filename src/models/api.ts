@@ -43,6 +43,11 @@ const ApiSchema = new mongoose.Schema({
         enum: ["healthy", "degraded", "down", "pending", "disabled"],
         default: "pending"
     },
+    interval: {
+        type: String,
+        enum: ["2min", "5min", "10min", "15min", "20min", "25min"],
+        default: "5min"
+    },
     lastResponseTime: Number,   // ms
     lastChecked: Date,
     lastStatusCode: Number,     // last HTTP status received from the endpoint

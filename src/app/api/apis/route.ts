@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import { Api } from "@/models/api";
 import { Project } from "@/models/project";
+import { getOrCreatePlan } from "@/lib/plan-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -24,7 +25,8 @@ export async function POST(req: NextRequest) {
             headers: apiHeaders,
             body: apiBody,
             expectedStatus,
-            expectedResponseStructure
+            expectedResponseStructure,
+            interval
         } = body;
 
         if (!projectId || !name || !url) {
@@ -37,6 +39,18 @@ export async function POST(req: NextRequest) {
         const project = await Project.findOne({ _id: projectId, userId: session.user.id });
         if (!project) {
             return NextResponse.json({ error: "Project not found or unauthorized" }, { status: 404 });
+        }
+
+        const plan = await getOrCreatePlan(session.user.id);
+
+        // Count all APIs across all projects owned by this user
+        const userProjectIds = await Project.find({ userId: session.user.id }).distinct('_id');
+        const apiCount = await Api.countDocuments({ projectId: { $in: userProjectIds } });
+
+        if (apiCount >= plan.apiCredits) {
+            return NextResponse.json({
+                error: `Monitor limit reached. Your current plan allows only ${plan.apiCredits} monitor(s).`
+            }, { status: 403 });
         }
 
         // Convert headers array to object for storage
@@ -58,7 +72,8 @@ export async function POST(req: NextRequest) {
             body: apiBody ? JSON.parse(apiBody) : null,
             expectedStatus: parseInt(expectedStatus) || 200,
             expectedResponseStructure: expectedResponseStructure ? JSON.parse(expectedResponseStructure) : null,
-            status: 'pending'
+            status: 'pending',
+            interval: interval || '5min'
         });
 
         return NextResponse.json(newApi, { status: 201 });

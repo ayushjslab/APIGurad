@@ -16,6 +16,7 @@ import {
 } from 'react-icons/hi'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { LuLayoutDashboard } from "react-icons/lu";
 import { ProjectSyncRedirect, useProject } from '@/context/project-context'
 import { TbBrandGoogleAnalytics } from "react-icons/tb";
@@ -30,7 +31,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
     const pathname = usePathname()
-    const { projects } = useProject()
+    const { projects, plan, isPlanLoading } = useProject()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -119,24 +120,56 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
                     })}
                 </nav>
 
-                {/* Sidebar Footer */}
+                {/* Sidebar Footer - Usage & Limits */}
                 <div className="absolute bottom-4 left-0 w-full px-3">
                     <div className={cn(
-                        "p-4 rounded-2xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10",
+                        "p-4 rounded-2xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 shadow-inner",
                         isCollapsed ? "hidden" : "block animate-in fade-in slide-in-from-bottom duration-500"
                     )}>
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-primary/20">
-                                    <HiOutlineBell size={20} />
+                        {!isPlanLoading && plan ? (
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                        {plan.plan} Plan
+                                    </span>
+                                    <Badge variant="outline" className="h-4 text-[8px] border-primary/20 bg-primary/5 text-primary px-1">
+                                        {Math.round(((plan.usedChecks || 0) / (plan.totalChecks || 1)) * 100)}% Used
+                                    </Badge>
                                 </div>
-                                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-card"></div>
+
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between text-[9px] font-bold">
+                                        <span className="text-muted-foreground">Monthly Checks</span>
+                                        <span>{plan.usedChecks} / {plan.totalChecks}</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(var(--primary),0.4)]"
+                                            style={{ width: `${Math.min(100, ((plan.usedChecks || 0) / (plan.totalChecks || 1)) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] text-muted-foreground font-bold uppercase">Monitors</span>
+                                        <span className="text-xs font-bold text-foreground">{plan.currentApis} / {plan.apiCredits}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] text-muted-foreground font-bold uppercase">Projects</span>
+                                        <span className="text-xs font-bold text-foreground">{plan.currentProjects} / {plan.projectCredits}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-sm font-semibold">User Account</span>
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Premium Plan</span>
+                        ) : (
+                            <div className="flex items-center gap-3 animate-pulse">
+                                <div className="w-8 h-8 rounded-full bg-muted"></div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="h-2 w-20 bg-muted rounded"></div>
+                                    <div className="h-2 w-12 bg-muted rounded"></div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </aside>

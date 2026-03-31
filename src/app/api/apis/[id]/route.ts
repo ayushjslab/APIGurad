@@ -4,6 +4,7 @@ import { Api } from "@/models/api";
 import { Project } from "@/models/project";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
+import mongoose from "mongoose";
 
 export async function PATCH(
     req: NextRequest,
@@ -19,6 +20,11 @@ export async function PATCH(
         }
 
         const { id } = await params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+        }
+
         const body = await req.json();
 
         await connectToDatabase();
@@ -40,6 +46,7 @@ export async function PATCH(
             url: body.url,
             method: body.method,
             expectedStatus: parseInt(body.expectedStatus) || 200,
+            interval: body.interval || '5min'
         };
 
         if (body.headers) {
@@ -92,6 +99,10 @@ export async function DELETE(
 
         const { id } = await params;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+        }
+
         await connectToDatabase();
 
         // Find the API
@@ -128,7 +139,12 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+
         const { id } = await params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+        }
 
         await connectToDatabase();
 

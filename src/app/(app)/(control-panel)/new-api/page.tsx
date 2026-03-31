@@ -30,6 +30,7 @@ const NewApiPage = () => {
     const [body, setBody] = useState('')
     const [expectedStatus, setExpectedStatus] = useState('200')
     const [expectedStructure, setExpectedStructure] = useState('')
+    const [interval, setInterval] = useState('5min')
     const [isSaving, setIsSaving] = useState(false)
 
 
@@ -97,7 +98,8 @@ const NewApiPage = () => {
                     headers: headers.filter(h => h.key.trim() !== ''),
                     body,
                     expectedStatus,
-                    expectedResponseStructure: expectedStructure
+                    expectedResponseStructure: expectedStructure,
+                    interval
                 })
             })
 
@@ -163,6 +165,24 @@ const NewApiPage = () => {
                                     onChange={(e) => setName(e.target.value)}
                                     className="rounded-xl border-border/50 focus-visible:ring-primary/20"
                                 />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="interval">Monitoring Interval</Label>
+                                <Select value={interval} onValueChange={setInterval}>
+                                    <SelectTrigger id="interval" className="rounded-xl border-border/50">
+                                        <SelectValue placeholder="Select interval" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border/50 shadow-2xl">
+                                        <SelectItem value="2min" className="rounded-lg">Every 2 minutes</SelectItem>
+                                        <SelectItem value="5min" className="rounded-lg">Every 5 minutes</SelectItem>
+                                        <SelectItem value="10min" className="rounded-lg">Every 10 minutes</SelectItem>
+                                        <SelectItem value="15min" className="rounded-lg">Every 15 minutes</SelectItem>
+                                        <SelectItem value="20min" className="rounded-lg">Every 20 minutes</SelectItem>
+                                        <SelectItem value="25min" className="rounded-lg">Every 25 minutes</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </CardContent>

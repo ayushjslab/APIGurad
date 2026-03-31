@@ -5,21 +5,14 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
     ArrowLeft,
-    Clock,
     CheckCircle2,
     AlertCircle,
-    RefreshCw,
-    Activity,
     Zap,
-    Database,
-    Search,
-    ChevronDown,
     Eye,
-    Shield,
     History
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -50,10 +43,26 @@ interface ApiDetails {
     method: string;
     status: string;
     expectedStatus: number;
+    totalSuccess: number;
+    totalFails: number;
+    lastResponseTime?: number;
+    interval: string;
+    createdAt: string;
 }
 
 interface LogsResponse {
     logs: Log[];
+    timeline: {
+        timestamp: string | null;
+        status: "success" | "error" | "inactive";
+    }[] | null;
+    meta: {
+        status: string;
+        totalSuccess: number;
+        totalFails: number;
+        consecutiveFails: number;
+        interval: string;
+    } | null;
     pagination: {
         total: number;
         page: number;
@@ -70,20 +79,34 @@ const LogDetailsPage = () => {
     const { data: apiDetails } = useQuery<ApiDetails>({
         queryKey: ['api-details', id],
         queryFn: async () => {
-            const response = await fetch(`/api/apis/detail?id=${id}`) // We might need a small detail route or filter from existing
-            if (!response.ok) {
-                // Fallback: try to find it in the project list if not found
-                const res = await fetch(`/api/apis/${id}`)
-                return res.json()
-            }
+            const response = await fetch(`/api/apis/${id}`)
+            if (!response.ok) throw new Error('Failed to fetch API details')
             return response.json()
-        }
+        },
+        enabled: !!id
     })
+
+    const reliability = React.useMemo(() => {
+        if (!apiDetails) return 100
+        const success = apiDetails.totalSuccess ?? 0
+        const fails = apiDetails.totalFails ?? 0
+        const total = success + fails
+        if (total === 0) return 100
+        return Math.round((success / total) * 1000) / 10
+    }, [apiDetails])
+
+    const successPhase = React.useMemo(() => {
+        const success = apiDetails?.totalSuccess ?? 0
+        if (success > 1000) return { label: 'Rock Solid', color: 'text-emerald-500', bg: 'bg-emerald-500/10' }
+        if (success > 500) return { label: 'Highly Reliable', color: 'text-green-500', bg: 'bg-green-500/10' }
+        if (success > 100) return { label: 'Established', color: 'text-blue-500', bg: 'bg-blue-500/10' }
+        return { label: 'Ramping Up', color: 'text-muted-foreground', bg: 'bg-muted/10' }
+    }, [apiDetails])
 
     const { data: logsData, isLoading } = useQuery<LogsResponse>({
         queryKey: ['api-logs', id, page],
         queryFn: async () => {
-            const response = await fetch(`/api/logs/${id}?page=${page}&limit=20`)
+            const response = await fetch(`/api/logs/${id}?page=${page}&limit=20&includeTimeline=true`)
             if (!response.ok) throw new Error('Failed to fetch logs')
             return response.json()
         },
@@ -118,38 +141,116 @@ const LogDetailsPage = () => {
             </div>
 
             {/* Stats Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total Checks', value: logsData?.pagination.total || 0, icon: Search, color: 'text-blue-500' },
-                    { label: 'Latency (Avg)', value: `${calculateAvgLatency(logsData?.logs ?? 0)}ms`, icon: Zap, color: 'text-amber-500' },
-                    { label: 'Successes', value: logsData?.logs.filter(l => l.outcome === 'success').length ?? 0, icon: CheckCircle2, color: 'text-green-500' },
-                    { label: 'Failures', value: logsData?.logs.filter(l => l.outcome === 'error').length ?? 0, icon: AlertCircle, color: 'text-red-500' },
-                ].map((stat, i) => (
-                    <Card key={i} className="border-border/50 bg-card/50 backdrop-blur-sm">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-3">
-                                <div className={cn("p-2 rounded-xl bg-muted/50", stat.color)}>
-                                    <stat.icon className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{stat.label}</p>
-                                    <p className="text-xl font-bold">{stat.value}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="md:col-span-1 border-border/50 bg-card/10 backdrop-blur-md relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CheckCircle2 className="h-24 w-24 text-green-500" />
+                    </div>
+                    <CardContent className="pt-6 relative z-10">
+                        <div className="flex justify-between items-start mb-2">
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-[0.2em]">Health Score</p>
+                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase rounded-full px-2 border-none", successPhase.bg, successPhase.color)}>
+                                {successPhase.label}
+                            </Badge>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <h2 className={cn(
+                                "text-6xl font-black tracking-tighter",
+                                reliability > 95 ? "text-green-500" : reliability > 80 ? "text-amber-500" : "text-red-500"
+                            )}>{reliability}%</h2>
+                            <span className="text-sm font-bold text-muted-foreground/50 italic">uptime</span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2 border-border/50 bg-card/10 backdrop-blur-md">
+                    <CardContent className="pt-6 h-full flex flex-col justify-between">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-[0.2em] mb-1">Performance Details</p>
+                                <div className="flex gap-6 mt-3">
+                                    <div>
+                                        <p className="text-[9px] text-muted-foreground font-bold uppercase">Last Latency</p>
+                                        <p className="text-xl font-bold font-mono">{apiDetails?.lastResponseTime || 0}ms</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-muted-foreground font-bold uppercase">Success Count</p>
+                                        <p className="text-xl font-bold text-green-500">{apiDetails?.totalSuccess || 0}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-muted-foreground font-bold uppercase">Incident History</p>
+                                        <p className="text-xl font-bold text-red-500">{apiDetails?.totalFails || 0}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                            <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                                <Zap className="h-6 w-6 animate-pulse" />
+                            </div>
+                        </div>
+
+                        {/* Uptime Visualizer (Modern Timeline) */}
+                        <div className="pt-4 space-y-2">
+                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest px-1">
+                                <span>Recent checks (Last 90) · {(apiDetails?.totalSuccess ?? 0) + (apiDetails?.totalFails ?? 0)} total</span>
+                                <span className={cn(
+                                    "font-black uppercase tracking-wider",
+                                    (logsData?.meta?.status || apiDetails?.status) === 'healthy' ? 'text-green-500' :
+                                        (logsData?.meta?.status || apiDetails?.status) === 'down' ? 'text-red-500' :
+                                            (logsData?.meta?.status || apiDetails?.status) === 'disabled' ? 'text-amber-500' :
+                                                'text-muted-foreground'
+                                )}>{logsData?.meta?.status || apiDetails?.status || '...'}</span>
+                            </div>
+                            <div className="flex gap-[2px] h-6 w-full items-end">
+                                {(logsData?.timeline ?? Array.from({ length: 90 })).map((bucket, i) => {
+                                    const status = typeof bucket === 'object' && 'status' in bucket ? bucket.status : 'inactive';
+                                    return (
+                                        <div
+                                            key={i}
+                                            className={cn(
+                                                "flex-1 rounded-sm transition-all hover:brightness-125 cursor-pointer relative group/bar self-end",
+                                                status === 'error'
+                                                    ? "bg-red-500 h-6 shadow-[0_0_6px_rgba(239,68,68,0.5)]"
+                                                    : status === 'success'
+                                                        ? "bg-green-500/80 h-5"
+                                                        : "bg-muted/30 h-3"
+                                            )}
+                                            title={typeof bucket === 'object' && bucket.timestamp
+                                                ? `${new Date(bucket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ${new Date(bucket.timestamp).toLocaleDateString()}: ${status.toUpperCase()}`
+                                                : status === 'inactive' ? 'Monitor not yet active' : ''
+                                            }
+                                        >
+                                            {status === 'error' && (
+                                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-400 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex justify-between text-[8px] text-muted-foreground px-1 pt-0.5">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="inline-block w-2 h-2 rounded-sm bg-green-500/70"></span>OK
+                                    <span className="inline-block w-2 h-2 rounded-sm bg-red-500"></span>Fail
+                                    <span className="inline-block w-2 h-2 rounded-sm bg-muted/30"></span>Inactive
+                                </span>
+                                <span>{logsData?.meta?.consecutiveFails ?? 0} consecutive fails now</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            {/* Logs Table */}
-            <Card className="border-border/50 bg-card/50 rounded-3xl overflow-hidden">
-                <CardHeader className="pb-0 pt-6">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        Recent Health Checks
-                        <Badge variant="secondary" className="rounded-md font-bold text-[10px] px-1.5 h-4">
-                            PAGE {page}
+            {/* Incident History Table */}
+            <Card className="border-border/50 bg-card/5 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl relative">
+                <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+                <CardHeader className="pb-2 pt-8 px-8 relative">
+                    <CardTitle className="text-xl font-bold flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                        Incident & Failure History
+                        <Badge variant="outline" className="rounded-xl font-bold text-[10px] px-2 h-5 border-red-500/20 bg-red-500/5 text-red-500">
+                            {logsData?.pagination.total || 0} TOTAL INCIDENTS
                         </Badge>
                     </CardTitle>
+                    <p className="text-xs text-muted-foreground ml-8">We only record persistent logs for failed health checks to optimize system performance.</p>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">

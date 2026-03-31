@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 
 interface API {
+  interval: string
   _id: string;
   projectId: string;
   name: string;
@@ -395,6 +396,7 @@ const EditApiDialog = ({ api, onClose, onSave, isSaving }: EditApiDialogProps) =
   const [body, setBody] = React.useState('')
   const [expectedStatus, setExpectedStatus] = React.useState('200')
   const [expectedStructure, setExpectedStructure] = React.useState('')
+  const [interval, setInterval] = React.useState('5min')
 
   React.useEffect(() => {
     if (api) {
@@ -404,6 +406,7 @@ const EditApiDialog = ({ api, onClose, onSave, isSaving }: EditApiDialogProps) =
       setExpectedStatus(api.expectedStatus.toString())
       setBody(api.body ? JSON.stringify(api.body, null, 2) : '')
       setExpectedStructure(api.expectedResponseStructure ? JSON.stringify(api.expectedResponseStructure, null, 2) : '')
+      setInterval(api.interval || '5min')
 
       const h = Object.entries(api.headers || {}).map(([key, value]) => ({ key, value }))
       setHeadersList(h.length > 0 ? h : [{ key: '', value: '' }])
@@ -434,7 +437,8 @@ const EditApiDialog = ({ api, onClose, onSave, isSaving }: EditApiDialogProps) =
       headers: headersList.filter(h => h.key.trim() !== ''),
       body,
       expectedStatus,
-      expectedResponseStructure: expectedStructure
+      expectedResponseStructure: expectedStructure,
+      interval
     })
   }
 
@@ -518,6 +522,22 @@ const EditApiDialog = ({ api, onClose, onSave, isSaving }: EditApiDialogProps) =
             <div className="space-y-2">
               <Label>Expected Status</Label>
               <Input value={expectedStatus} onChange={(e) => setExpectedStatus(e.target.value)} className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Monitoring Interval</Label>
+              <Select value={interval} onValueChange={setInterval}>
+                <SelectTrigger className="rounded-xl border-border/50">
+                  <SelectValue placeholder="Select interval" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border/50 shadow-2xl">
+                  <SelectItem value="2min" className="rounded-lg">Every 2 minutes</SelectItem>
+                  <SelectItem value="5min" className="rounded-lg">Every 5 minutes</SelectItem>
+                  <SelectItem value="10min" className="rounded-lg">Every 10 minutes</SelectItem>
+                  <SelectItem value="15min" className="rounded-lg">Every 15 minutes</SelectItem>
+                  <SelectItem value="20min" className="rounded-lg">Every 20 minutes</SelectItem>
+                  <SelectItem value="25min" className="rounded-lg">Every 25 minutes</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

@@ -2,57 +2,97 @@ import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import { Api } from "@/models/api";
 import { ApiLog } from "@/models/api-log";
+import { Project } from "@/models/project";
+import { Plan } from "@/models/plan";
+import { getOrCreatePlan } from "@/lib/plan-utils";
 
 const MAX_CONSECUTIVE_FAILS = 5;
 const REQUEST_TIMEOUT_MS = 50_000; // 15 second timeout per API
 
-/**
- * POST /api/monitor/run
- *
- * The monitoring engine entry-point.
- * Authenticated via `x-cron-secret` header (not user session — this is called by GitHub Actions).
- * 
- * Flow:
- *  1. Validate secret
- *  2. Load all non-disabled API monitors
- *  3. Fan-out all checks in parallel (Promise.allSettled — fair, no starvation)
- *  4. Persist result in ApiLog + update Api document
- *  5. Return summary
- */
 export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Load all monitors that are NOT disabled
+    // 1. Load all monitors that are NOT disabled
     const monitors = await Api.find({ status: { $ne: "disabled" } }).lean();
 
     if (monitors.length === 0) {
         return NextResponse.json({ message: "No active monitors", checked: 0 });
     }
 
-    // Fan-out: check all monitors in parallel
-    const results = await Promise.allSettled(
-        monitors.map((monitor) => checkMonitor(monitor))
-    );
+    // 2. Resolve owner for each monitor and group them
+    // This is necessary because limits are per-user (Plan)
+    const monitorGroups: Record<string, any[]> = {};
+    const projectCache: Record<string, string> = {}; // projectId -> userId
 
-    // Tally results
-    let healthy = 0, failed = 0, disabled = 0;
-    for (const r of results) {
-        if (r.status === "fulfilled") {
-            if (r.value.newStatus === "healthy") healthy++;
-            else if (r.value.newStatus === "disabled") disabled++;
-            else failed++;
-        } else {
-            failed++; // Promise itself rejected (shouldn't happen as checkMonitor catches internally)
+    for (const monitor of monitors) {
+        let userId = projectCache[monitor.projectId.toString()];
+        if (!userId) {
+            const project = await Project.findById(monitor.projectId).select('userId').lean();
+            if (project) {
+                userId = project.userId.toString();
+                projectCache[monitor.projectId.toString()] = userId;
+            }
+        }
+
+        if (userId) {
+            if (!monitorGroups[userId]) monitorGroups[userId] = [];
+            monitorGroups[userId].push(monitor);
         }
     }
 
+    // 3. Process each user group
+    let totalHealthy = 0, totalFailed = 0, totalDisabled = 0, totalChecked = 0;
+
+    // We process users in parallel but keep monitors within a user group manageable
+    const userSummary = await Promise.all(Object.entries(monitorGroups).map(async ([userId, userMonitors]) => {
+        const plan = await getOrCreatePlan(userId);
+
+        // If user is out of credits, skip all their monitors
+        if (plan.usedChecks >= plan.totalChecks) {
+            return { checked: 0, healthy: 0, failed: 0, disabled: 0, skipped: userMonitors.length };
+        }
+
+        // Only run as many checks as they have remaining
+        const remaining = plan.totalChecks - plan.usedChecks;
+        const toCheck = userMonitors.slice(0, remaining);
+        const skippedDueToLimit = userMonitors.length - toCheck.length;
+
+        const results = await Promise.allSettled(
+            toCheck.map((monitor) => checkMonitor(monitor))
+        );
+
+        let healthy = 0, failed = 0, disabled = 0;
+        for (const r of results) {
+            if (r.status === "fulfilled") {
+                if (r.value.newStatus === "healthy") healthy++;
+                else if (r.value.newStatus === "disabled") disabled++;
+                else failed++;
+            } else {
+                failed++;
+            }
+        }
+
+        // Update plan usage
+        await Plan.findByIdAndUpdate(plan._id, { $inc: { usedChecks: toCheck.length } });
+
+        return { checked: toCheck.length, healthy, failed, disabled, skipped: skippedDueToLimit };
+    }));
+
+    for (const s of userSummary) {
+        totalChecked += s.checked;
+        totalHealthy += s.healthy;
+        totalFailed += s.failed;
+        totalDisabled += s.disabled;
+    }
+
     return NextResponse.json({
-        checked: monitors.length,
-        healthy,
-        failed,
-        disabled,
+        checked: totalChecked,
+        healthy: totalHealthy,
+        failed: totalFailed,
+        disabled: totalDisabled,
         timestamp: new Date().toISOString(),
+        userGroups: Object.keys(monitorGroups).length
     });
 }
 
@@ -108,8 +148,6 @@ async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
         const response = await fetch(monitor.url, fetchOptions);
         httpStatus = response.status;
         statusMatched = httpStatus === monitor.expectedStatus;
-        console.log(response);
-        console.log(response.status)
 
         const rawText = await response.text().catch(() => "");
 
@@ -155,7 +193,7 @@ async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
             : "down";
 
     // ─── Persist ApiLog ────────────────────────────────────────────────────────
-    const logEntry = {
+    const logEntry: any = {
         apiId: monitor._id,
         projectId: monitor.projectId,
         checkedAt: new Date(),
@@ -164,9 +202,15 @@ async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
         responseTimeMs,
         statusMatched,
         structureMatched,
-        ...(errorMessage ? { errorMessage } : {}),
-        ...(responseBody ? { responseBody } : {}),
     };
+
+    if (!isSuccess) {
+        // Detailed log for failures (add error/body)
+        Object.assign(logEntry, {
+            ...(errorMessage ? { errorMessage } : {}),
+            ...(responseBody ? { responseBody } : {}),
+        });
+    }
 
     // ─── Update Api document ───────────────────────────────────────────────────
     const updatePayload: Record<string, any> = {
@@ -187,11 +231,13 @@ async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
         updatePayload.disabledReason = `Auto-disabled after ${MAX_CONSECUTIVE_FAILS} consecutive failures`;
     }
 
-    // Run both DB operations concurrently
-    await Promise.all([
-        ApiLog.create(logEntry),
+    // ─── Update Database ────────────────────────────────────────────────────────
+    const dbOps: any[] = [
         Api.findByIdAndUpdate(monitor._id, updatePayload),
-    ]);
+        ApiLog.create(logEntry) // Always save logs now
+    ];
+
+    await Promise.all(dbOps);
 
     return { apiId: monitor._id.toString(), newStatus };
 }
