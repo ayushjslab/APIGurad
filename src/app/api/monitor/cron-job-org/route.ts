@@ -5,6 +5,7 @@ import { ApiLog } from "@/models/api-log";
 import { Project } from "@/models/project";
 import { Plan } from "@/models/plan";
 import { getOrCreatePlan } from "@/lib/plan-utils";
+import { Notification } from "@/models/notification";
 
 const MAX_CONSECUTIVE_FAILS = 5;
 const REQUEST_TIMEOUT_MS = 50_000; // 15 second timeout per API
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
         const skippedDueToLimit = userMonitors.length - toCheck.length;
 
         const results = await Promise.allSettled(
-            toCheck.map((monitor) => checkMonitor(monitor))
+            toCheck.map((monitor) => checkMonitor(monitor, userId))
         );
 
         let healthy = 0, failed = 0, disabled = 0;
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
 
 interface MonitorDoc {
     _id: any;
+    name: string;
     projectId: any;
     url: string;
     method: string;
@@ -110,6 +112,7 @@ interface MonitorDoc {
     consecutiveFails: number;
     totalSuccess: number;
     totalFails: number;
+    status: string;
 }
 
 interface CheckResult {
@@ -117,7 +120,7 @@ interface CheckResult {
     newStatus: "healthy" | "down" | "disabled";
 }
 
-async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
+async function checkMonitor(monitor: MonitorDoc, userId: string): Promise<CheckResult> {
     const start = Date.now();
     let httpStatus: number | undefined;
     let responseBody = "";
@@ -236,6 +239,27 @@ async function checkMonitor(monitor: MonitorDoc): Promise<CheckResult> {
         Api.findByIdAndUpdate(monitor._id, updatePayload),
         ApiLog.create(logEntry) // Always save logs now
     ];
+
+    // ─── Trigger Notifications for Status Changes ──────────────────────────────
+    // We notify if it was healthy and now is down or disabled
+    if (monitor.status === 'healthy' && (newStatus === 'down' || newStatus === 'disabled')) {
+        dbOps.push(Notification.create({
+            userId,
+            type: 'error',
+            title: `Monitor Down: ${monitor.name}`,
+            message: `Your monitor for ${monitor.url} is now ${newStatus}. ${errorMessage || ''}`,
+            link: `/logs/${monitor._id}`,
+        }));
+    } else if (newStatus === 'disabled' && monitor.status !== 'disabled') {
+        // Specifically notify about auto-disabling if not already notified
+        dbOps.push(Notification.create({
+            userId,
+            type: 'warning',
+            title: `Monitor Auto-Disabled: ${monitor.name}`,
+            message: `Monitor for ${monitor.url} has been auto-disabled after ${MAX_CONSECUTIVE_FAILS} consecutive failures.`,
+            link: `/logs/${monitor._id}`,
+        }));
+    }
 
     await Promise.all(dbOps);
 

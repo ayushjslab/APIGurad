@@ -46,7 +46,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isMobile }: SidebarProps) => {
         { name: 'Manage Project', href: '/manage-project', icon: LuFolderCog },
         { name: 'Logs', href: '/logs', icon: HiOutlineDocumentText },
         { name: 'Statistics', href: '/stats', icon: TbBrandGoogleAnalytics },
-        { name: 'Settings', href: '/settings', icon: HiOutlineCog },
+        { name: 'Notifications', href: '/notifications', icon: HiOutlineBell },
     ]
 
     if (!mounted) return null

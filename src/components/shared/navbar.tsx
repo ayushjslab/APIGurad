@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react'
 import {
     HiMenuAlt2,
     HiOutlineBell,
@@ -37,6 +36,20 @@ import { useProject } from '@/context/project-context'
 const Navbar = ({ isCollapsed, toggleSidebar, isMobile }: NavbarProps) => {
     const { data: session } = authClient.useSession()
     const { activeProject, setActiveProject, projects } = useProject()
+
+    // Fetch unread notifications count with 30s polling
+    const { data: notificationsData } = useQuery({
+        queryKey: ['notifications-unread'],
+        queryFn: async () => {
+            const response = await fetch('/api/notifications?unreadOnly=true&limit=1')
+            if (!response.ok) throw new Error('Failed to fetch notifications')
+            return response.json()
+        },
+        refetchInterval: 30000, // 30 seconds
+        enabled: !!session
+    })
+
+    const unreadCount = notificationsData?.unreadCount ?? 0
 
     return (
         <header
@@ -118,12 +131,20 @@ const Navbar = ({ isCollapsed, toggleSidebar, isMobile }: NavbarProps) => {
                     </DropdownMenu>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    {/* Notifications */}
                     <div className="relative">
-                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 transition-colors relative">
-                            <HiOutlineBell size={22} className="text-muted-foreground hover:text-primary transition-colors" />
-                            <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></div>
-                        </Button>
+                        <Link href="/notifications">
+                            <HiOutlineBell size={22} className={cn(
+                                "transition-colors",
+                                (unreadCount ?? 0) > 0 ? "text-primary scale-110" : "text-muted-foreground hover:text-primary"
+                            )} />
+                            {(unreadCount ?? 0) > 0 && (
+                                <div className="absolute top-1.5 right-1.5 flex items-center justify-center min-w-[20px] h-[20px] bg-red-500 rounded-full border-2 border-background text-[10px] font-black text-white px-0.5 animate-in zoom-in duration-300">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </div>
+                            )}
+                        </Link>
                     </div>
 
                     <DropdownMenu>

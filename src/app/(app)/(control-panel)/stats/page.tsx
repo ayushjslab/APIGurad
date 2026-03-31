@@ -1,9 +1,8 @@
 "use client"
 
-import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts'
 import {
